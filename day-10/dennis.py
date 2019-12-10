@@ -11,7 +11,6 @@ import numpy as np
 def diff_to_deg(d1, d2):
     return (2*np.pi+np.arctan2(d1[1]-d2[1], d2[0]-d1[0]))%(2*np.pi)
 
-grid = []
 with open('data/input.txt', 'r') as f:
     grid = np.array([[int(x == '#') for x in line.strip('\n')] for line in f.readlines()])
 asteroids = np.argwhere(grid == 1).tolist()
