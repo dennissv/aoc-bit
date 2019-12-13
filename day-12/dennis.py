@@ -10,20 +10,20 @@ Build video with:
 """
 
 from physics import Body, OrbitalSystem
+import numpy as np
+import re
 
-colors = ('io', 'ganymede', 'europa', 'callisto')
+planet_names = ('io', 'ganymede', 'europa', 'callisto')
+bodies = []
 with open('data/input.txt', 'r') as f:
-    bodies = []
-    to_strip = '<x=,yz>'
     for i, line in enumerate(f.readlines()):
-        ns = ''
-        for char in line.strip('\n'):
-            if char not in to_strip:
-                ns += char
-        x, y, z = [int(x) for x in ns.split(' ')]
-        bodies.append(Body(x, y, z, colors[i]))
+        x, y, z = [int(x) for x in re.findall(r'-?\d+', line)]
+        bodies.append(Body(x, y, z, planet_names[i]))
 
 system = OrbitalSystem(bodies, draw_flag=True, record_flag=True)
+#while not system.solved:
 while system.steps < 1001:
     system.step()
-print(system.energies[1001])
+
+print('Part 1:', system.energies[1000+2])
+#print('Part 2:', np.lcm(np.lcm(system.solutions['x'], system.solutions['y']), system.solutions['z']))

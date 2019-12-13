@@ -7,9 +7,7 @@ Created on Thu Dec 12 13:52:54 2019
 """
 
 from itertools import combinations
-
 import time
-from PIL import Image
 import pygame
 
 class Body():
@@ -34,6 +32,9 @@ class OrbitalSystem():
             self._setup_draw()
         self.current_energy = 0
         self.energies = [0, 0, 0]
+        self.solved = False
+        self.solutions = {'x': 0, 'y': 0, 'z': 0}
+        self.start = self._get_state()
             
     def step(self):
         self._update_velocity()
@@ -43,56 +44,27 @@ class OrbitalSystem():
         self.current_energy = self.total_energy()
         self.energies.append(self.current_energy)
         self.steps += 1
-    
-    def _setup_draw(self):
-        pygame.init()
-        self.SCREEN_SIZE = 1000
-        self.SCREEN = pygame.display.set_mode((self.SCREEN_SIZE, self.SCREEN_SIZE))
-        for body in self.bodies:
-            body.img = pygame.image.load("img/{}.png".format(body.img)).convert_alpha()
-        self.TEXT_COLOR = pygame.Color('#cccccc')
-        self.BACKGROUND_COLOR = pygame.Color('#0f0f23')
-        self.GRAPH_COLOR = pygame.Color('#00cc00')
-        self.BODY_COLOR = pygame.Color('#ffff66')
-        pygame.font.init()
-        self.myfont = pygame.font.Font("Source_Code_Pro/SourceCodePro-Regular.ttf", 20)
-        self.graph_surface = pygame.Surface((self.SCREEN_SIZE, self.SCREEN_SIZE))
-        self.graph_surface.fill(self.BACKGROUND_COLOR)
-        if self.record_flag:
-            self.images = []
-        
-    def draw(self):
-        if self.steps%1 == 0:
-            pygame.draw.line(self.graph_surface, self.GRAPH_COLOR,
-                             ((self.steps-1)//1, int(130-(self.energies[-3]/(17500/110)))),
-                             ((self.steps)//1, int(130-(self.energies[-1]/(17500/110)))), 2)
-        dt = 5
-        self.bodies.sort(key=lambda x: x.z)
-        for t in range(dt+1):
-            self.SCREEN.blit(self.graph_surface, (0,0))
-            textsurface = self.myfont.render('Step {}'.format(self.steps), False, self.TEXT_COLOR)
-            self.SCREEN.blit(textsurface,(10,10))
-            textsurface = self.myfont.render('Energy of system: {}'.format(self.current_energy),
-                                             False, self.TEXT_COLOR)
-            self.SCREEN.blit(textsurface,(10, 40))
-            for body in self.bodies:
-                z_scale = max(5, int((body.z+60+t*(body.vz/dt))))
-                xy_scale = self.SCREEN_SIZE*.175
-                self.SCREEN.blit(pygame.transform.scale(body.img, (z_scale, z_scale)),
-                                 (int((body.x+xy_scale-5+t*(body.vx/dt))*((self.SCREEN_SIZE/2)/xy_scale)),
-                                  int((body.y+xy_scale-5+t*(body.vy/dt))*((self.SCREEN_SIZE/2)/xy_scale))))
-            pygame.display.update()
-            if self.record_flag:
-                pygame.image.save(self.SCREEN, "recording/{}_{}.png".format(str(self.steps).zfill(5), t))
-                if self.steps == 1000 and t == 5:
-                    for c in range(180):
-                        pygame.image.save(self.SCREEN, "recording/{}_{}_{}.png".format(str(self.steps).zfill(5), t, str(c).zfill(3)))
-#                data = pygame.image.tostring(self.SCREEN, 'RGBA')
-#                self.images.append(Image.frombytes('RGBA', (500,500), data))
-#            time.sleep(.005)
+        self._is_solution()
 
     def _get_state(self):
-        return (((b.x, b.y, b.z, b.vx, b.vy, b.vz) for b in self.bodies))
+        state = {'x': '', 'y': '', 'z': ''}
+        for body in self.bodies:
+            state['x'] += str(body.x)
+            state['y'] += str(body.y)
+            state['z'] += str(body.z)
+        return state
+    
+    def _is_solution(self):
+        state = self._get_state()
+        solved = 0
+        for axis in 'xyz':
+            if not self.solutions[axis]:
+                if self.start[axis] == state[axis]:
+                    self.solutions[axis] = self.steps+1
+            else:
+                solved += 1
+        if solved == 3:
+            self.solved = True
     
     def _update_velocity(self):
         for comb in combinations(self.bodies, 2):
@@ -134,3 +106,51 @@ class OrbitalSystem():
         for body in self.bodies:
             energy += self._potential_energy(body)*self._kinetic_energy(body)
         return energy
+
+    
+    # DRAWING FUNCTIONS
+
+    def _setup_draw(self):
+            pygame.init()
+            self.SCREEN_SIZE = 1000
+            self.SCREEN = pygame.display.set_mode((self.SCREEN_SIZE, self.SCREEN_SIZE))
+            for body in self.bodies:
+                body.img = pygame.image.load("img/{}.png".format(body.img)).convert_alpha()
+            self.TEXT_COLOR = pygame.Color('#cccccc')
+            self.BACKGROUND_COLOR = pygame.Color('#0f0f23')
+            self.GRAPH_COLOR = pygame.Color('#00cc00')
+            self.BODY_COLOR = pygame.Color('#ffff66')
+            pygame.font.init()
+            self.myfont = pygame.font.Font("Source_Code_Pro/SourceCodePro-Regular.ttf", 20)
+            self.graph_surface = pygame.Surface((self.SCREEN_SIZE, self.SCREEN_SIZE))
+            self.graph_surface.fill(self.BACKGROUND_COLOR)
+            if self.record_flag:
+                self.images = []
+            
+    def draw(self):
+        if self.steps%1 == 0:
+            pygame.draw.line(self.graph_surface, self.GRAPH_COLOR,
+                             ((self.steps-1)//1, int(130-(self.energies[-3]/(17500/110)))),
+                             ((self.steps)//1, int(130-(self.energies[-1]/(17500/110)))), 2)
+        dt = 3
+        self.bodies.sort(key=lambda x: x.z)
+        for t in range(dt+1):
+            self.SCREEN.blit(self.graph_surface, (0,0))
+            textsurface = self.myfont.render('Step {}'.format(self.steps), False, self.TEXT_COLOR)
+            self.SCREEN.blit(textsurface,(10,10))
+            textsurface = self.myfont.render('Energy of system: {}'.format(self.current_energy),
+                                             False, self.TEXT_COLOR)
+            self.SCREEN.blit(textsurface,(10, 40))
+            for body in self.bodies:
+                z_scale = max(5, int((body.z+200+t*(body.vz/dt))/3))
+                xy_scale = self.SCREEN_SIZE*.175
+                self.SCREEN.blit(pygame.transform.scale(body.img, (z_scale, z_scale)),
+                                 (int((body.x+xy_scale-5+t*(body.vx/dt))*((self.SCREEN_SIZE/2)/xy_scale)),
+                                  int((body.y+xy_scale-5+t*(body.vy/dt))*((self.SCREEN_SIZE/2)/xy_scale))))
+            pygame.display.update()
+            if self.record_flag:
+                pygame.image.save(self.SCREEN, "recording/{}_{}.png".format(str(self.steps).zfill(5), t))
+                if self.steps == 1000 and t == 5:
+                    for c in range(180):
+                        pygame.image.save(self.SCREEN, "recording/{}_{}_{}.png".format(str(self.steps).zfill(5), t, str(c).zfill(3)))
+#            time.sleep(.01)
