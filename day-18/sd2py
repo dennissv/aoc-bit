@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Dec 20 23:03:41 2019
+
+@author: dennis
+"""
+
+from string import ascii_uppercase
+from string import ascii_lowercase
+
+import networkx as nx
+
+def get_neighbours(pos):
+    y, x = pos
+    neighbours = []
+    for i in range(-1, 2):
+        for j in range(-1, 2):
+            if abs(i)+abs(j) == 1:
+                if grid[y+i][x+j] in '.'+ascii_lowercase+ascii_uppercase:
+                    neighbours.append((y+i, x+j))
+    return neighbours
+
+with open('data/input.txt', 'r') as f:
+    grid = [row.strip('\n') for row in f.readlines()]
+
+positions = dict()
+for y, row in enumerate(grid):
+    for x, char in enumerate(row):
+        if char == '@':
+            start = (y, x)
+        if char in ascii_lowercase+ascii_uppercase:
+            positions[char] = (y, x)
+
+g = nx.Graph()
+queue = [start]
+visited = set()
+while queue:
+    new_queue = []
+    for node in queue:
+        visited.add(node)
+        for neighbour in get_neighbours(node):
+            if neighbour not in visited:
+                new_queue.append(neighbour)
+                g.add_edge(node, neighbour)
+    queue = new_queue
+
+distances = {char: {} for char in ascii_lowercase+ascii_uppercase}
+for item1 in ascii_lowercase+ascii_uppercase:
+    for item2 in ascii_lowercase+ascii_uppercase:
+        if item1 == item2:
+            continue
+        distances[item1][item2] = nx.astar_path_length(g, positions[item1], positions[item2])
